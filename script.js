@@ -1729,6 +1729,7 @@ function atualizarIndiceSinonimos() {
     });
 }
 
+
 // Funções para importar e exportar o dicionário de sinônimos
 function exportarSinonimos() {
     // Converter o banco de sinônimos para JSON e fazer download
@@ -1789,7 +1790,7 @@ function adicionarSinonimo(palavra, sinonimos) {
     }
 
     bancoDeSinonimos[palavraLower] = sinonimosArray;
-        // ADICIONE ESTA LINHA
+    // ADICIONE ESTA LINHA
     atualizarIndiceSinonimos();
     return true;
 }
@@ -2118,10 +2119,33 @@ function criarAreaSinonimos(texto) {
             resultado.appendChild(spanPalavra);
 
             // Verificar se temos sinônimos para esta palavra
+            // Verificar se temos sinônimos para esta palavra (diretamente ou como sinônimo de outra)
+            let palavraPrincipal = palavraLower;
+            let sinonimosParaMostrar = [];
+
+            // Caso 1: A palavra está diretamente no banco de sinônimos
             if (bancoDeSinonimos[palavraLower]) {
+                sinonimosParaMostrar = bancoDeSinonimos[palavraLower];
+            }
+            // Caso 2: A palavra é um sinônimo de outra palavra no banco
+            else if (indiceSinonimos[palavraLower]) {
+                palavraPrincipal = indiceSinonimos[palavraLower];
+                // Filtrar a lista para remover a própria palavra
+                sinonimosParaMostrar = bancoDeSinonimos[palavraPrincipal].filter(
+                    s => s.toLowerCase() !== palavraLower
+                );
+
+                // Adicionar a palavra principal à lista de sinônimos se não for a mesma
+                if (palavraPrincipal !== palavraLower) {
+                    sinonimosParaMostrar.unshift(palavraPrincipal);
+                }
+            }
+
+            // Se encontramos sinônimos para mostrar (por qualquer método)
+            if (sinonimosParaMostrar.length > 0) {
                 const divPalavra = document.createElement('div');
                 divPalavra.innerHTML = `<strong>${palavra}:</strong>`;
-                divPalavra.className = 'palavra-sinonimos'; // Não mais escondido por padrão
+                divPalavra.className = 'palavra-sinonimos';
                 divPalavra.dataset.index = index;
                 divPalavra.dataset.palavraLower = palavraLower;
 
@@ -2133,7 +2157,7 @@ function criarAreaSinonimos(texto) {
                 const divSinonimos = document.createElement('div');
                 divSinonimos.className = 'sinonimos';
 
-                bancoDeSinonimos[palavraLower].forEach(sinonimo => {
+                sinonimosParaMostrar.forEach(sinonimo => {
                     const btnSinonimo = document.createElement('button');
                     btnSinonimo.textContent = sinonimo;
                     btnSinonimo.className = 'sinonimo-btn';
@@ -2297,7 +2321,7 @@ function copiarResultado() {
 }
 // Adicionar eventos depois que o DOM estiver carregado
 document.addEventListener('DOMContentLoaded', function () {
-        // ADICIONE ESTA LINHA AQUI, como primeira instrução dentro da função
+    // ADICIONE ESTA LINHA AQUI, como primeira instrução dentro da função
     atualizarIndiceSinonimos();
     // Adicionar evento de input para processamento em tempo real
     document.getElementById('textoEntrada').addEventListener('input', processarEmTempoReal);
@@ -2529,45 +2553,45 @@ function iniciarReconhecimentoVoz() {
     // Criar instância do reconhecimento de voz
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    
+
     // Configurar o reconhecimento
     recognition.lang = 'pt-BR'; // Configurar para português brasileiro
     recognition.continuous = false;
     recognition.interimResults = false; // Mudado para false para evitar resultados parciais
-    
+
     const textoEntrada = document.getElementById('textoEntrada');
     const botaoMic = document.getElementById('botaoMic');
-    
+
     // Variável para armazenar a posição atual do cursor
     let cursorPos = textoEntrada.selectionStart || textoEntrada.value.length;
-    
+
     // Salvar a posição do cursor antes de iniciar o reconhecimento
     textoEntrada.addEventListener('click', () => {
         cursorPos = textoEntrada.selectionStart;
     });
-    
+
     // Evento ao iniciar o reconhecimento
     recognition.onstart = () => {
         botaoMic.classList.add('ativo');
         botaoMic.innerHTML = '<i class="mic-icon-ativo"></i>'; // ícone de microfone ativo
     };
-    
+
     // Evento para resultados finais apenas
     recognition.onresult = (event) => {
         // Pegar apenas o último resultado (resultado final)
         const transcript = event.results[0][0].transcript;
-            
+
         // Inserir o texto na posição do cursor
         const valorAntes = textoEntrada.value.substring(0, cursorPos);
         const valorDepois = textoEntrada.value.substring(cursorPos);
-        
+
         textoEntrada.value = valorAntes + transcript + valorDepois;
-        
+
         // Atualizar a posição do cursor
         cursorPos += transcript.length;
         textoEntrada.selectionStart = cursorPos;
         textoEntrada.selectionEnd = cursorPos;
-        
+
         // Disparar o evento input para processar em tempo real
         const inputEvent = new Event('input', {
             bubbles: true,
@@ -2575,24 +2599,24 @@ function iniciarReconhecimentoVoz() {
         });
         textoEntrada.dispatchEvent(inputEvent);
     };
-    
+
     // Evento ao finalizar o reconhecimento
     recognition.onend = () => {
         botaoMic.classList.remove('ativo');
         botaoMic.innerHTML = '<i class="mic-icon"></i>'; // ícone de microfone normal
     };
-    
+
     // Evento de erro
     recognition.onerror = (event) => {
         console.error('Erro no reconhecimento de voz:', event.error);
         botaoMic.classList.remove('ativo');
         botaoMic.innerHTML = '<i class="mic-icon"></i>';
-        
+
         if (event.error === 'not-allowed') {
             alert('Permissão de microfone negada. Por favor, permita o acesso ao microfone.');
         }
     };
-    
+
     // Iniciar ou parar o reconhecimento ao clicar no botão
     botaoMic.addEventListener('click', () => {
         if (botaoMic.classList.contains('ativo')) {
